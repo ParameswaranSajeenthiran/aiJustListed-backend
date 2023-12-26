@@ -107,14 +107,15 @@ exports.emailValidate = async (req, res) => {
 exports.updateUser = async (req, res) => {
     try {
         const { userid } = req.tokenData;
-        const { userName, userImage, email, phoneNumber, address } = req.body;
+        const { userName, userImage, email, phoneNumber, address, subscription } = req.body;
         
         // Define the fields you want to update
         const updateFields = {
             userName,
             email,
             phoneNumber,
-            address
+            address,
+            subscription
         };
         
         // If a new userImage is provided, update the userImage field

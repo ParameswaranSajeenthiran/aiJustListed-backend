@@ -32,6 +32,10 @@ const PreMadeSchema = new mongoose.Schema(
         socialMediaCaption: {
             type: String,
         },
+        regenerationCount:{
+            type: Number,
+            default:0
+        }
     },
     { timestamps: true }
 );

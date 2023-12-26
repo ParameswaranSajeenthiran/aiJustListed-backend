@@ -34,6 +34,10 @@ const UserSchema = new mongoose.Schema(
         address: {
             type: String,
         },
+        subscription: {
+            type: String,
+            default: "free"
+        },
     },
     { timestamps: true }
 );

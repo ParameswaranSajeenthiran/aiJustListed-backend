@@ -1,5 +1,6 @@
 const { FillUp } = require("../model");
 const axios = require('axios');
+const { validateSubscriptionForGeneratePremadeSummary } = require("../utils/utils");
 
 exports.generateFillUpSummary = async (req, res) => {
     try {
@@ -20,7 +21,18 @@ exports.generateFillUpSummary = async (req, res) => {
             additionalNotes,
             purpose,
         } = req.body;
+
+
+        if(validateSubscriptionForGeneratePremadeSummary(userid) === false){
+            return res.status(403).json({
+                message: "You have reached your limit for generating premade summary",
+                success: false,
+            });
+        }
+
         const prompt = `Summarize the property listing for ${propertyName} located in ${location}. This ${propertyType} is currently in ${status} condition and is available for ${purpose}. The ${propertyType} has ${bedRoomNodes} bedrooms and offers a total floor area of ${floorArea} square feet. The kitchen features ${kitchenNotes}, and the bathroom includes ${bathRoomNotes}. Additional notes: ${additionalNotes}. This property is part of the ${projectName} project. The price is ${price}. Provide a summary in ${language} with a character limit of ${textLimit}.`;
+
+
 
         const headers = {
             'Content-Type': 'application/json',
@@ -98,7 +110,7 @@ exports.reGenerateFillUpSummary = async (req, res) => {
         };
         const response = await axios.post(process.env.GPT_API_URL, data, { headers: headers });
 
-        FillUp.findByIdAndUpdate(fillupid, { regenerateSummary: response.data.choices[0].text }, { new: true }).then((result) => {
+        FillUp.findByIdAndUpdate(fillupid, { regenerateSummary: response.data.choices[0].text, $inc: { regenerationCount: 1 } }, { new: true }).then((result) => {
             return res.status(201).json({
                 message: "fetch data successfully",
                 success: true,

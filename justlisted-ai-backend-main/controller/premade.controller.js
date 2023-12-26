@@ -1,10 +1,26 @@
 const axios = require('axios');
 const { PreMade } = require('../model');
+const { validateSubscriptionForGeneratePremadeSummary } = require('../utils/utils');
 
 exports.generatePremadeSummary = async (req, res) => {
+
+    console.log("prepare premade summary")
     try {
         const { propertyName, premadeList, textLimit, language } = req.body;
         const { userid } = req.tokenData;
+        const isSubscriptionValid = await validateSubscriptionForGeneratePremadeSummary(userid);
+        console.log("isSubscriptionValid is " + isSubscriptionValid)
+        if(isSubscriptionValid === false){
+
+            console.log("prepare premade summary 2")
+            return res.status(403).json({
+                message: "You have reached your limit for generating premade summary",
+                success: false,
+            });
+        }
+
+
+
         const headers = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${process.env.GPT_API_KEY}`
@@ -14,29 +30,42 @@ exports.generatePremadeSummary = async (req, res) => {
             max_tokens: 150,
             temperature: 0.7,
         };
-        const response = await axios.post(process.env.GPT_API_URL, data, { headers: headers });
-        PreMade.create({
-            userId: userid,
-            propertyName: propertyName,
-            premadeList: premadeList,
-            textLimit: textLimit,
-            language: language,
-            generateSummary: response.data.choices[0].text
-        }).then((result) => {
-            return res.status(201).json({
-                message: "fetch data successfully",
-                success: true,
-                data: result,
-                summary: result.generateSummary,
-                id: result._id
-            });
+        
+         axios.post(process.env.GPT_API_URL, data, { headers: headers }).then((response) => {
+            console.log("result is " + response)
+
+            
+            PreMade.create({
+                userId: userid,
+                propertyName: propertyName,
+                premadeList: premadeList,
+                textLimit: textLimit,
+                language: language,
+                generateSummary: response.data.choices[0].text
+            }).then((result) => {
+                return res.status(201).json({
+                    message: "fetch data successfully",
+                    success: true,
+                    data: result,
+                    summary: result.generateSummary,
+                    id: result._id
+                });
+            }).catch((e) => {
+                return res.status(500).json({
+                    message: "Something went wrong",
+                    success: false,
+                    error: e.message,
+                });
+            })
         }).catch((e) => {
-            return res.status(500).json({
-                message: "Something went wrong",
-                success: false,
-                error: e.message,
-            });
-        })
+           console.log("error is " + e)
+           return res.status(500).json({
+            message: "Something went wrong",
+            success: false,
+            error: e.message,
+        });
+        });
+
 
 
     } catch (error) {
@@ -68,12 +97,13 @@ exports.reGeneratePremadeSummary = async (req, res) => {
         };
         const response = await axios.post(process.env.GPT_API_URL, data, { headers: headers });
 
-        PreMade.findByIdAndUpdate(premadeid, { regenerateSummary: response.data.choices[0].text }, { new: true }).then((result) => {
+        PreMade.findByIdAndUpdate(premadeid, { regenerateSummary: response.data.choices[0].text ,$inc: { regenerationCount: 1 }  }, { new: true }).then((result) => {
             return res.status(201).json({
                 message: "fetch data successfully",
                 success: true,
                 data: result,
                 regenerateSummary: result.regenerateSummary,
+                
             });
         }).catch((e) => {
             return res.status(500).json({
